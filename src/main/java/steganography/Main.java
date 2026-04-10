@@ -17,7 +17,7 @@ public class Main {
         lsb.encode(img, secret);
 
         // 3. Save the image as a lossless PNG
-        String fileName = "stego_output.png";
+        String fileName = "./output/stego_output.png";
         handler.saveImage(img, fileName);
         System.out.println("Encoded image saved as: " + fileName);
 

@@ -8,8 +8,12 @@ import javax.imageio.ImageIO;
 public class ImageHandler {
 
     public void saveImage(BufferedImage image, String outputPath) throws IOException {
-        File outputFile = new File(outputPath);
-        ImageIO.write(image, "png", outputFile);
+        File file = new File(outputPath);
+        File parentDir = file.getParentFile();
+        if (parentDir != null && !parentDir.exists()) {
+            parentDir.mkdirs();
+        }
+        ImageIO.write(image, "png", file);
     }
 
     public BufferedImage loadImage(String inputPath) throws IOException {
