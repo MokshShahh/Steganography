@@ -10,21 +10,25 @@ public class GUI extends JFrame {
     private ImageHandler handler = new ImageHandler();
 
     private JTextField encodePathField = new JTextField(20);
+    private JTextField encodeKeyField = new JTextField(20);
     private JTextArea encodeMessageArea = new JTextArea(10, 20);
+    
     private JTextField decodePathField = new JTextField(20);
-    private JTextArea decodeMessageArea = new JTextArea(10, 20);
+    private JTextField decodeKeyField = new JTextField(20);
+    private JTextArea encryptedMessageArea = new JTextArea(10, 20);
+    private JTextArea decryptedMessageArea = new JTextArea(10, 20);
 
     private File encodeFile;
     private File decodeFile;
 
     public GUI() {
-        setTitle("Steganography Tool");
-        setSize(800, 500);
+        setTitle("Steganography Tool with Encryption");
+        setSize(900, 600);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
 
         JSplitPane splitPane = new JSplitPane(JSplitPane.HORIZONTAL_SPLIT, createEncodePanel(), createDecodePanel());
-        splitPane.setDividerLocation(400);
+        splitPane.setDividerLocation(450);
         add(splitPane);
     }
 
@@ -45,20 +49,26 @@ public class GUI extends JFrame {
         encodePathField.setEditable(false);
         panel.add(encodePathField, gbc);
 
-        // Message Input
+        // Encryption Key
         gbc.gridy = 2;
+        panel.add(new JLabel("Encryption Key:"), gbc);
+        gbc.gridy = 3;
+        panel.add(encodeKeyField, gbc);
+
+        // Message Input
+        gbc.gridy = 4;
         panel.add(new JLabel("Message to hide:"), gbc);
 
-        gbc.gridy = 3;
+        gbc.gridy = 5;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
         panel.add(new JScrollPane(encodeMessageArea), gbc);
 
         // Action Button
-        gbc.gridy = 4;
+        gbc.gridy = 6;
         gbc.fill = GridBagConstraints.HORIZONTAL;
         gbc.weighty = 0;
-        JButton encodeBtn = new JButton("Hide & Save");
+        JButton encodeBtn = new JButton("Encrypt & Hide");
         panel.add(encodeBtn, gbc);
 
         selectBtn.addActionListener(e -> {
@@ -91,20 +101,38 @@ public class GUI extends JFrame {
         decodePathField.setEditable(false);
         panel.add(decodePathField, gbc);
 
-        // Action Button
+        // Decryption Key
         gbc.gridy = 2;
-        JButton decodeBtn = new JButton("Decode Message");
+        panel.add(new JLabel("Decryption Key:"), gbc);
+        gbc.gridy = 3;
+        panel.add(decodeKeyField, gbc);
+
+        // Action Button
+        gbc.gridy = 4;
+        JButton decodeBtn = new JButton("Extract & Decrypt");
         panel.add(decodeBtn, gbc);
 
-        // Message Output
-        gbc.gridy = 3;
-        panel.add(new JLabel("Decoded Message:"), gbc);
-
-        gbc.gridy = 4;
+        // Encrypted Output
+        gbc.gridy = 5;
+        panel.add(new JLabel("Extracted (Encrypted) Message:"), gbc);
+        gbc.gridy = 6;
         gbc.fill = GridBagConstraints.BOTH;
         gbc.weighty = 1.0;
-        decodeMessageArea.setEditable(false);
-        panel.add(new JScrollPane(decodeMessageArea), gbc);
+        encryptedMessageArea.setEditable(false);
+        encryptedMessageArea.setLineWrap(true);
+        panel.add(new JScrollPane(encryptedMessageArea), gbc);
+
+        // Decrypted Output
+        gbc.gridy = 7;
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.weighty = 0;
+        panel.add(new JLabel("Decrypted Message:"), gbc);
+        gbc.gridy = 8;
+        gbc.fill = GridBagConstraints.BOTH;
+        gbc.weighty = 1.0;
+        decryptedMessageArea.setEditable(false);
+        decryptedMessageArea.setLineWrap(true);
+        panel.add(new JScrollPane(decryptedMessageArea), gbc);
 
         selectBtn.addActionListener(e -> {
             JFileChooser chooser = new JFileChooser();
@@ -125,8 +153,19 @@ public class GUI extends JFrame {
             return;
         }
         String message = encodeMessageArea.getText();
+        String key = encodeKeyField.getText();
         if (message.isEmpty()) {
             JOptionPane.showMessageDialog(this, "Please enter a message.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+        if (key.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter an encryption key.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
+
+        String encryptedMessage = CryptoUtils.encrypt(message, key);
+        if (encryptedMessage == null) {
+            JOptionPane.showMessageDialog(this, "Encryption failed.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
 
@@ -136,9 +175,9 @@ public class GUI extends JFrame {
             File saveFile = chooser.getSelectedFile();
             try {
                 BufferedImage image = handler.loadImage(encodeFile.getAbsolutePath());
-                lsb.encode(image, message);
+                lsb.encode(image, encryptedMessage);
                 handler.saveImage(image, saveFile.getAbsolutePath());
-                JOptionPane.showMessageDialog(this, "Message hidden successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
+                JOptionPane.showMessageDialog(this, "Message encrypted and hidden successfully!", "Success", JOptionPane.INFORMATION_MESSAGE);
             } catch (Exception ex) {
                 JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
             }
@@ -150,15 +189,28 @@ public class GUI extends JFrame {
             JOptionPane.showMessageDialog(this, "Please select a stego image first.", "Error", JOptionPane.ERROR_MESSAGE);
             return;
         }
+        String key = decodeKeyField.getText();
+        if (key.isEmpty()) {
+            JOptionPane.showMessageDialog(this, "Please enter the decryption key.", "Error", JOptionPane.ERROR_MESSAGE);
+            return;
+        }
 
         try {
             BufferedImage image = handler.loadImage(decodeFile.getAbsolutePath());
-            String message = lsb.decode(image);
-            decodeMessageArea.setText(message);
+            String extractedMessage = lsb.decode(image);
+            encryptedMessageArea.setText(extractedMessage);
+            
+            String decryptedMessage = CryptoUtils.decrypt(extractedMessage, key);
+            if (decryptedMessage != null) {
+                decryptedMessageArea.setText(decryptedMessage);
+            } else {
+                decryptedMessageArea.setText("[Decryption Failed - Possibly wrong key or no message]");
+            }
         } catch (Exception ex) {
             JOptionPane.showMessageDialog(this, "Error: " + ex.getMessage(), "Error", JOptionPane.ERROR_MESSAGE);
         }
     }
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> new GUI().setVisible(true));
